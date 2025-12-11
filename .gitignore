@@ -1,0 +1,33 @@
+# Build directories
+build/
+target/
+
+# Downloaded models
+models/
+
+# Downloaded binaries
+bin/
+
+# Source data directories
+I5/
+
+# Compressed archives
+*.tar
+*.tar.gz
+*.tar.xz
+*.zip
+
+# Temporary files
+*.tmp
+*~
+.DS_Store
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Log files
+*.log
