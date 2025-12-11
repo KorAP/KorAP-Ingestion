@@ -7,6 +7,7 @@ models/
 
 # Downloaded binaries
 bin/
+lib/
 
 # Source data directories
 I5/
