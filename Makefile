@@ -16,7 +16,7 @@ KORAPXMLTOOL_MODELS_PATH ?= models
 
 .PHONY: all clean test index korap check-src
 
-.PRECIOUS: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.krill.tar %.i5.xml
+.PRECIOUS: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.cmc.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.krill.tar %.i5.xml
 
 all: check-src korap
 
@@ -43,7 +43,7 @@ $(BUILD_DIR)/%.zip: $(SRC_DIR)/%.i5.xml
 
 
 $(BUILD_DIR)/%.tree_tagger.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
-	$(KORAPXMLTOOL) -T treetagger -t zip --force -D $(BUILD_DIR) $<
+	$(KORAPXMLTOOL) -j 1 -T treetagger -t zip --force -D $(BUILD_DIR) $<
 #	 $(KORAPXMLTOOL) $< | pv | docker run --rm -i korap/conllu2treetagger -l german | conllu2korapxml > $@
 
 $(BUILD_DIR)/%.spacy.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
@@ -52,7 +52,7 @@ $(BUILD_DIR)/%.spacy.zip: $(BUILD_DIR)/%.zip bin/korapxmltool
 lib/Krill-Indexer.jar:
 	mkdir -p lib
 	curl -sL -o $@ https://github.com/korap/Krill/releases/latest/download/Krill-Indexer.jar
-	
+
 bin/korapxmltool:
 	mkdir -p bin
 	curl -sL -o $@ https://github.com/korap/korapxmltool/releases/latest/download/korapxmltool
@@ -84,7 +84,7 @@ $(KORAPXMLTOOL_MODELS_PATH)/de-pos-maxent.bin:
 
 $(BUILD_DIR)/%.marmot-malt.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de.marmot $(KORAPXMLTOOL_MODELS_PATH)/german.mco  bin/korapxmltool 
 	$(KORAPXMLTOOL) -T marmot:models/de.marmot -P malt:models/german.mco -t zip --force -D $(BUILD_DIR) $<
-	
+
 $(BUILD_DIR)/%.corenlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/german-fast.tagger $(KORAPXMLTOOL_MODELS_PATH)/germanSR.ser.gz bin/korapxmltool
 	$(KORAPXMLTOOL) -T corenlp -P corenlp -t zip --force -D $(BUILD_DIR) $<
 
@@ -92,7 +92,7 @@ $(BUILD_DIR)/%.opennlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de-po
 	$(KORAPXMLTOOL) -T opennlp -t zip --force -D $(BUILD_DIR) $<
 
 $(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
-	$(KORAPXMLTOOL) -A "docker run --rm -i korap/conllu-cmc -s" -l error -F cmc -t zip --force -D $(BUILD_DIR) $<
+	$(KORAPXMLTOOL) -j 1 -A "docker run --rm -i korap/conllu-cmc -s" -l error -F cmc -t zip --force -D $(BUILD_DIR) $<
 
 # udpipe target removed as requested
 # %.ud.zip: %.zip
