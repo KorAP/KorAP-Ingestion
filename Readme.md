@@ -12,7 +12,6 @@ Then open http://localhost:64543 in your browser.
 ## Prerequisites
 
 * Java JRE 21 and 
-* [tei2korapxml](https://github.com/KorAP/KorAP-XML-TEI)
 * GNU Make
 * Docker with compose
 

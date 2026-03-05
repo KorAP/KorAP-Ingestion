@@ -38,7 +38,7 @@ check-src:
 
 $(BUILD_DIR)/%.zip: $(SRC_DIR)/%.i5.xml
 	mkdir -p $(BUILD_DIR)
-	tei2korapxml --progress -l warn -s -tk $< > $@
+	docker run --rm -i korap/tei2korapxml:latest  -l warn -s -tk - < $< > $@
 	printf "%s\t%s\n" "$(grep -c '<idsText ' $<)" "$(unzip -l $@ | grep data.xml | wc -l)"
 
 
