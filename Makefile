@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 SRC_DIR ?= I5
 
 # Discover all *.i5.xml files in SRC_DIR
@@ -11,10 +12,11 @@ MAKE ?= make -j $(shell nproc)
 # KORAPXMLTOOL_HEAP ?= $(shell echo "$$(($(MAX_THREADS) * 2500))")
 KORAPXMLTOOL ?= ./bin/korapxmltool
 KORAPXMLTOOL_MODELS_PATH ?= models
+DOCKER_CPU_SHARES ?= # e.g. 512 for lower priority (default Docker value is 1024)
 
 .DELETE_ON_ERROR:
 
-.PHONY: all clean test index korap check-src
+.PHONY: all clean test index korap check-src pre-krill
 
 .PRECIOUS: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.cmc.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.krill.tar %.i5.xml
 
@@ -38,8 +40,9 @@ check-src:
 
 $(BUILD_DIR)/%.zip: $(SRC_DIR)/%.i5.xml
 	mkdir -p $(BUILD_DIR)
-	docker run --rm -i korap/tei2korapxml:latest  -l warn -s -tk - < $< > $@
-	printf "%s\t%s\n" "$(grep -c '<idsText ' $<)" "$(unzip -l $@ | grep data.xml | wc -l)"
+	docker run --rm -i $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) korap/tei2korapxml:latest -l warn -s -tk - < $< > $@ 2> >(tee $(@:.zip=.log) >&2)
+#	docker run --rm $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v $(abspath $<):/input.i5.xml:ro korap/tei2korapxml:latest --progress -l warn -s -tk /input.i5.xml > $@ 2> >(tee $(@:.zip=.log) >&2)
+	printf "%s\t%s\n" "$$(grep -c '<idsText ' $<)" "$$(unzip -l $@ | grep data.xml | wc -l)"
 
 
 $(BUILD_DIR)/%.tree_tagger.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
@@ -98,8 +101,12 @@ $(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip bin/korapxmltool
 # %.ud.zip: %.zip
 #	$(KORAPXMLTOOL) $< | pv | ./scripts/udpipe2 | conllu2korapxml > $@
 
-$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.cmc.zip 
-	K2K_PUBLISHER_STRING=1 K2K_TRANSLATOR_TEXT=1 $(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip
+KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(BUILD_DIR)/$(base).marmot-malt.zip $(BUILD_DIR)/$(base).tree_tagger.zip $(BUILD_DIR)/$(base).spacy.zip $(BUILD_DIR)/$(base).corenlp.zip $(BUILD_DIR)/$(base).opennlp.zip)
+
+pre-krill: check-src $(KRILL_PREREQS)
+
+$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip
+	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip
 
 $(TARGET_DIR)/index: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
 	make lib/Krill-Indexer.jar
