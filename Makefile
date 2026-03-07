@@ -97,15 +97,18 @@ $(BUILD_DIR)/%.opennlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de-po
 $(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
 	$(KORAPXMLTOOL) -j 1 -A "docker run --rm -i korap/conllu-cmc -s" -l error -F cmc -t zip --force -D $(BUILD_DIR) $<
 
+$(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
+	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l error -F gender -t zip --force -D $(BUILD_DIR) $<
+
 # udpipe target removed as requested
 # %.ud.zip: %.zip
 #	$(KORAPXMLTOOL) $< | pv | ./scripts/udpipe2 | conllu2korapxml > $@
 
-KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(BUILD_DIR)/$(base).marmot-malt.zip $(BUILD_DIR)/$(base).tree_tagger.zip $(BUILD_DIR)/$(base).spacy.zip $(BUILD_DIR)/$(base).corenlp.zip $(BUILD_DIR)/$(base).opennlp.zip)
+KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(BUILD_DIR)/$(base).marmot-malt.zip $(BUILD_DIR)/$(base).tree_tagger.zip $(BUILD_DIR)/$(base).spacy.zip $(BUILD_DIR)/$(base).corenlp.zip $(BUILD_DIR)/$(base).opennlp.zip $(BUILD_DIR)/$(base).gender.zip)
 
 pre-krill: check-src $(KRILL_PREREQS)
 
-$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip
+$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.gender.zip
 	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip
 
 $(TARGET_DIR)/index: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
