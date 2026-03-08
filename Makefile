@@ -16,7 +16,7 @@ DOCKER_CPU_SHARES ?= # e.g. 512 for lower priority (default Docker value is 1024
 
 .DELETE_ON_ERROR:
 
-.PHONY: all clean test index korap check-src pre-krill
+.PHONY: all clean test index korap check-src pre-krill krill
 
 .PRECIOUS: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.cmc.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.krill.tar %.i5.xml
 
@@ -98,7 +98,7 @@ $(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip bin/korapxmltool
 	$(KORAPXMLTOOL) -j 1 -A "docker run --rm -i korap/conllu-cmc -s" -l error -F cmc -t zip --force -D $(BUILD_DIR) $<
 
 $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
-	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l error -F gender -t zip --force -D $(BUILD_DIR) $<
+	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l WARNING -F gender -t zip --force -D $(BUILD_DIR) $<
 
 # udpipe target removed as requested
 # %.ud.zip: %.zip
@@ -110,6 +110,8 @@ pre-krill: check-src $(KRILL_PREREQS)
 
 $(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.gender.zip
 	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip
+
+krill: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
 
 $(TARGET_DIR)/index: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
 	make lib/Krill-Indexer.jar
