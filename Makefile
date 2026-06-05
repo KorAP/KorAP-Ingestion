@@ -5,6 +5,17 @@ SRC_DIR ?= I5
 I5_FILES := $(wildcard $(SRC_DIR)/*.i5.xml)
 BASENAMES := $(patsubst %.i5.xml,%,$(notdir $(I5_FILES)))
 
+# Standard TEI P5 support
+TEI_DIR ?= TEI
+TEI_FILES := $(wildcard $(TEI_DIR)/*.xml)
+TEI_ZIP_NAME ?= tei
+TEI_FLAGS ?= --auto-textsigle 'TEI/XYZ.00001' # --xmlid-to-textsigle '([A-Z]+)\.(.*)\.([0-9]+)\.*([0-9])@$$1/$$2/$$3$$4'
+export TEI_FLAGS
+
+ifneq ($(TEI_FILES),)
+BASENAMES += $(TEI_ZIP_NAME)
+endif
+
 BUILD_DIR = build
 TARGET_DIR ?= ./target
 MAX_THREADS ?= 8 # $(shell nproc)
@@ -25,16 +36,14 @@ all: check-src korap
 index: check-src $(TARGET_DIR)/index
 
 check-src:
-	@if [ ! -d "$(SRC_DIR)" ]; then \
-		echo "Error: SRC_DIR '$(SRC_DIR)' does not exist."; \
-		echo "Please create it and place your .i5.xml files there,"; \
-		echo "or specify a different directory using SRC_DIR variable."; \
-		echo "Example: make SRC_DIR=/path/to/files"; \
+	@if [ ! -d "$(SRC_DIR)" ] && [ ! -d "$(TEI_DIR)" ]; then \
+		echo "Error: Neither SRC_DIR '$(SRC_DIR)' nor TEI_DIR '$(TEI_DIR)' exists."; \
+		echo "Please place your .i5.xml files in '$(SRC_DIR)' or your TEI .xml files in '$(TEI_DIR)'."; \
 		exit 1; \
 	fi
-	@if [ -z "$$(find "$(SRC_DIR)" -maxdepth 1 -name '*.i5.xml' -print -quit)" ]; then \
-		echo "Error: No .i5.xml files found in '$(SRC_DIR)'."; \
-		echo "Please populate it or set SRC_DIR to a different location."; \
+	@if [ -z "$$(find "$(SRC_DIR)" -maxdepth 1 -name '*.i5.xml' -print -quit 2>/dev/null)" ] && \
+	    [ -z "$$(find "$(TEI_DIR)" -maxdepth 1 -name '*.xml' -print -quit 2>/dev/null)" ]; then \
+		echo "Error: No .i5.xml files found in '$(SRC_DIR)' and no .xml files found in '$(TEI_DIR)'."; \
 		exit 1; \
 	fi
 
@@ -43,6 +52,11 @@ $(BUILD_DIR)/%.zip: $(SRC_DIR)/%.i5.xml
 	docker run --rm -i $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) korap/tei2korapxml:latest -l warn -s -tk - < $< > $@ 2> >(tee $(@:.zip=.log) >&2)
 #	docker run --rm $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v $(abspath $<):/input.i5.xml:ro korap/tei2korapxml:latest --progress -l warn -s -tk /input.i5.xml > $@ 2> >(tee $(@:.zip=.log) >&2)
 	printf "%s\t%s\n" "$$(grep -c '<idsText ' $<)" "$$(unzip -l $@ | grep data.xml | wc -l)"
+
+$(BUILD_DIR)/$(TEI_ZIP_NAME).zip: $(TEI_FILES)
+	mkdir -p $(BUILD_DIR)
+	docker run --rm --entrypoint /bin/sh $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v "$(abspath $(TEI_DIR)):/input:ro" korap/tei2korapxml:latest -c 'tei2korapxml -l warn -s -tk '"$$TEI_FLAGS"' /input/*.xml' > $@ 2> >(tee $(@:.zip=.log) >&2)
+	printf "%s\t%s\n" "$$(cat $^ | grep -c '<teiHeader')" "$$(unzip -l $@ | grep data.xml | wc -l)"
 
 
 $(BUILD_DIR)/%.tree_tagger.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 

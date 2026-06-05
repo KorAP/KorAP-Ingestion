@@ -11,6 +11,7 @@ lib/
 
 # Source data directories
 I5/
+TEI/
 
 # Compressed archives
 *.tar
