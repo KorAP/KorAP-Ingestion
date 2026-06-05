@@ -25,6 +25,7 @@ make KORAP_PORT=64544
 ```
 
 Then open the corresponding URL (e.g., http://localhost:64544) in your browser.
+
 ### Standard TEI P5 Support
 
 Standard TEI P5 files (which typically contain one text per file) can be batch-converted together. By default, place your `.xml` files in the `TEI` directory in the root of the project:
@@ -57,6 +58,17 @@ You can extract the three-part sigle (e.g., `SK/UL/19811`) by overriding the `TE
 
 ```bash
 make TEI_FLAGS='--xmlid-to-textsigle '\''([A-Z]+)\.(.*)\.([0-9]+)\.*([0-9])@$$1/$$2/$$3$$4'\'''
+```
+
+### Configuring Active Annotators
+
+You can specify which annotation layers to run and package by setting the `ANNOTATIONS` variable. By default, it runs:
+`marmot-malt tree_tagger spacy corenlp opennlp`
+
+To enable gender annotation (using the `conllu-gender` tool), add `gender` to the list:
+
+```bash
+make ANNOTATIONS="marmot-malt tree_tagger spacy corenlp opennlp gender"
 ```
 
 ## Prerequisites

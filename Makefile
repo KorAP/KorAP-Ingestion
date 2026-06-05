@@ -76,6 +76,11 @@ bin/korapxmltool:
 	curl -sL -o $@ https://github.com/korap/korapxmltool/releases/latest/download/korapxmltool
 	chmod +x $@
 
+bin/conllu-gender:
+	mkdir -p bin
+	curl -sL -o $@ https://github.com/KorAP/conllu-gender/releases/latest/download/conllu-gender
+	chmod +x $@
+
 $(KORAPXMLTOOL_MODELS_PATH)/de.marmot:
 	mkdir -p $(KORAPXMLTOOL_MODELS_PATH)
 	curl -sL -o $@ https://cistern.cis.lmu.de/marmot/models/CURRENT/spmrl/de.marmot
@@ -119,11 +124,14 @@ $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
 # %.ud.zip: %.zip
 #	$(KORAPXMLTOOL) $< | pv | ./scripts/udpipe2 | conllu2korapxml > $@
 
-KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(BUILD_DIR)/$(base).marmot-malt.zip $(BUILD_DIR)/$(base).tree_tagger.zip $(BUILD_DIR)/$(base).spacy.zip $(BUILD_DIR)/$(base).corenlp.zip $(BUILD_DIR)/$(base).opennlp.zip $(BUILD_DIR)/$(base).gender.zip)
+# Active annotation layers to run and package into Krill
+ANNOTATIONS ?= marmot-malt tree_tagger spacy corenlp opennlp
+
+KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(foreach ann,$(ANNOTATIONS),$(BUILD_DIR)/$(base).$(ann).zip))
 
 pre-krill: check-src $(KRILL_PREREQS)
 
-$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.gender.zip
+$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(foreach ann,$(ANNOTATIONS),$(BUILD_DIR)/%.$(ann).zip)
 	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip
 
 krill: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
