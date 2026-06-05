@@ -18,6 +18,13 @@ make SRC_DIR=/path/to/your/files
 
 Then open http://localhost:64543 in your browser.
 
+If port `64543` is already in use on your host (e.g. by another process or IDE port-forwarding helper), you can specify a different host port using the `KORAP_PORT` variable:
+
+```bash
+make KORAP_PORT=64544
+```
+
+Then open the corresponding URL (e.g., http://localhost:64544) in your browser.
 ### Standard TEI P5 Support
 
 Standard TEI P5 files (which typically contain one text per file) can be batch-converted together. By default, place your `.xml` files in the `TEI` directory in the root of the project:
