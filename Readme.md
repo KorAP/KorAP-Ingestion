@@ -63,13 +63,31 @@ make TEI_FLAGS='--xmlid-to-textsigle '\''([A-Z]+)\.(.*)\.([0-9]+)\.*([0-9])@$$1/
 ### Configuring Active Annotators
 
 You can specify which annotation layers to run and package by setting the `ANNOTATIONS` variable. By default, it runs:
-`marmot-malt tree_tagger spacy corenlp opennlp`
+`marmot-malt tree_tagger spacy corenlp opennlp wikidomain`
 
 To enable gender annotation (using the `conllu-gender` tool), add `gender` to the list:
 
 ```bash
 make ANNOTATIONS="marmot-malt tree_tagger spacy corenlp opennlp gender"
 ```
+
+### Topic-domain Classification (stand-off metadata)
+
+`wikidomain` is a special annotation: instead of a per-text foundry zip it produces a
+single *stand-off metadata* XML per corpus (`build/<corpus>.wikidomain.meta.xml`) holding
+Wikipedia top-level topic-domain classifications, generated with the `korap/wiki-taxonomy`
+Docker image. korapxmltool auto-detects these `.meta.xml` files and folds them into the
+Krill index as a `wikidomain` keywords field, queryable per text in KorAP.
+
+It is enabled by default. Such metadata-producing layers are listed in `META_ANNOTATIONS`
+(default: `wikidomain`); everything else in `ANNOTATIONS` is treated as a foundry zip. To
+build just the classifications without indexing:
+
+```bash
+make meta
+```
+
+To disable it, drop it from `ANNOTATIONS` (e.g. `make ANNOTATIONS="marmot-malt spacy"`).
 
 ## Prerequisites
 

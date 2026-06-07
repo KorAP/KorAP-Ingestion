@@ -28,9 +28,9 @@ DOCKER_CPU_SHARES ?= # e.g. 512 for lower priority (default Docker value is 1024
 
 .DELETE_ON_ERROR:
 
-.PHONY: all clean test index korap check-src pre-krill krill
+.PHONY: all clean test index korap check-src pre-krill krill meta
 
-.PRECIOUS: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.cmc.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.krill.tar %.i5.xml
+.PRECIOUS: $(BUILD_DIR)/%.zip $(BUILD_DIR)/%.tree_tagger.zip $(BUILD_DIR)/%.marmot-malt.zip $(BUILD_DIR)/%.spacy.zip $(BUILD_DIR)/%.corenlp.zip $(BUILD_DIR)/%.cmc.zip $(BUILD_DIR)/%.opennlp.zip $(BUILD_DIR)/%.meta.xml $(BUILD_DIR)/%.krill.tar %.i5.xml
 
 all: check-src korap
 
@@ -120,19 +120,45 @@ $(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip bin/korapxmltool
 $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
 	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l WARNING -F gender -t zip --force -D $(BUILD_DIR) $<
 
+# --- Stand-off metadata annotations -----------------------------------------
+WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy
+
+# Wikipedia top-level topic-domain classification (annotation: wikidomain).
+# Unlike the foundry annotations this yields a single stand-off metadata XML per
+# corpus, not a per-text zip. The model is baked into the image, so nothing to mount.
+$(BUILD_DIR)/%.wikidomain.meta.xml: $(BUILD_DIR)/%.zip bin/korapxmltool
+	set -o pipefail; $(KORAPXMLTOOL) -t now $< \
+	  | docker run --rm -i $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) \
+	      $(WIKI_TAXONOMY_IMAGE) --topk 2 --threshold 0.4 > $@ 2> >(tee $(@:.xml=.log) >&2)
+
 # udpipe target removed as requested
 # %.ud.zip: %.zip
 #	$(KORAPXMLTOOL) $< | pv | ./scripts/udpipe2 | conllu2korapxml > $@
 
-# Active annotation layers to run and package into Krill
-ANNOTATIONS ?= marmot-malt tree_tagger spacy corenlp opennlp
+# Active annotation layers to run and package into Krill. Most produce a per-text
+# foundry zip; those also listed in META_ANNOTATIONS instead produce a single
+# stand-off metadata XML per corpus (auto-detected by korapxmltool).
+ANNOTATIONS ?= marmot-malt tree_tagger spacy corenlp opennlp wikidomain
+META_ANNOTATIONS ?= wikidomain
 
-KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(foreach ann,$(ANNOTATIONS),$(BUILD_DIR)/$(base).$(ann).zip))
+# Build artifact produced by annotation $(2) for base $(1): a stand-off .meta.xml
+# for meta-type annotations, otherwise a foundry .zip.
+artifact = $(BUILD_DIR)/$(1).$(2).$(if $(filter $(2),$(META_ANNOTATIONS)),meta.xml,zip)
+# Meta-type annotations that are actually active (must be passed to krill explicitly,
+# since the recipe globs *.zip only).
+ACTIVE_META := $(filter $(META_ANNOTATIONS),$(ANNOTATIONS))
+
+KRILL_PREREQS := $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).zip $(foreach ann,$(ANNOTATIONS),$(call artifact,$(base),$(ann))))
 
 pre-krill: check-src $(KRILL_PREREQS)
 
-$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(foreach ann,$(ANNOTATIONS),$(BUILD_DIR)/%.$(ann).zip)
-	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip
+# Build just the stand-off metadata layers without indexing.
+meta: check-src $(foreach base,$(BASENAMES),$(foreach ann,$(ACTIVE_META),$(BUILD_DIR)/$(base).$(ann).meta.xml))
+
+# The base zip, every annotation zip, and every stand-off meta XML are folded into
+# one Krill tar. korapxmltool auto-detects the .meta.xml stand-off inputs.
+$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(foreach ann,$(ANNOTATIONS),$(call artifact,%,$(ann)))
+	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip $(foreach ann,$(ACTIVE_META),$(BUILD_DIR)/$*.$(ann).meta.xml)
 
 krill: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
 
