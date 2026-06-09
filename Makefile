@@ -123,12 +123,18 @@ $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
 # --- Stand-off metadata annotations -----------------------------------------
 WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy
 
+# Pass --gpus=all to GPU-capable docker runs when CUDA GPUs are actually usable:
+# nvidia-smi must succeed on the host and Docker must expose the nvidia runtime.
+# Probed once at parse time; override by setting GPU_FLAG (e.g. GPU_FLAG= to disable).
+GPU_FLAG ?= $(shell if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 && \
+	docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -qi nvidia; then echo --gpus=all; fi)
+
 # Wikipedia top-level topic-domain classification (annotation: wikidomain).
 # Unlike the foundry annotations this yields a single stand-off metadata XML per
 # corpus, not a per-text zip. The model is baked into the image, so nothing to mount.
 $(BUILD_DIR)/%.wikidomain.meta.xml: $(BUILD_DIR)/%.zip bin/korapxmltool
 	set -o pipefail; $(KORAPXMLTOOL) -t now $< \
-	  | docker run --rm -i $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) \
+	  | docker run --rm -i $(GPU_FLAG) $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) \
 	      $(WIKI_TAXONOMY_IMAGE) --topk 2 --threshold 0.4 > $@ 2> >(tee $(@:.xml=.log) >&2)
 
 # udpipe target removed as requested
