@@ -2,8 +2,8 @@ SHELL := /bin/bash
 SRC_DIR ?= I5
 KORAP_PORT ?= 64543
 
-# Discover all *.i5.xml files in SRC_DIR
-I5_FILES := $(wildcard $(SRC_DIR)/*.i5.xml)
+# Discover all *.i5.xml files in SRC_DIR, excluding inlined tagged copies (*-TAG.i5.xml)
+I5_FILES := $(filter-out %-TAG.i5.xml,$(wildcard $(SRC_DIR)/*.i5.xml))
 BASENAMES := $(patsubst %.i5.xml,%,$(notdir $(I5_FILES)))
 
 # Standard TEI P5 support
@@ -42,7 +42,7 @@ check-src:
 		echo "Please place your .i5.xml files in '$(SRC_DIR)' or your TEI .xml files in '$(TEI_DIR)'."; \
 		exit 1; \
 	fi
-	@if [ -z "$$(find "$(SRC_DIR)" -maxdepth 1 -name '*.i5.xml' -print -quit 2>/dev/null)" ] && \
+	@if [ -z "$$(find "$(SRC_DIR)" -maxdepth 1 -name '*.i5.xml' ! -name '*-TAG.i5.xml' -print -quit 2>/dev/null)" ] && \
 	    [ -z "$$(find "$(TEI_DIR)" -maxdepth 1 -name '*.xml' -print -quit 2>/dev/null)" ]; then \
 		echo "Error: No .i5.xml files found in '$(SRC_DIR)' and no .xml files found in '$(TEI_DIR)'."; \
 		exit 1; \
