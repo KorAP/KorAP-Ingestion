@@ -123,11 +123,11 @@ $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
 # --- Stand-off metadata annotations -----------------------------------------
 WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy
 
-# Pass --gpus=all to GPU-capable docker runs when CUDA GPUs are actually usable:
-# nvidia-smi must succeed on the host and Docker must expose the nvidia runtime.
+# Pass --gpus=all to GPU-capable docker runs when a CUDA GPU is usable, detected
+# by nvidia-smi succeeding on the host. (The nvidia runtime is not listed in
+# `docker info` when the Container Toolkit uses CDI, so we don't probe for it.)
 # Probed once at parse time; override by setting GPU_FLAG (e.g. GPU_FLAG= to disable).
-GPU_FLAG ?= $(shell if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 && \
-	docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -qi nvidia; then echo --gpus=all; fi)
+GPU_FLAG ?= $(shell if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then echo --gpus=all; fi)
 
 # Wikipedia top-level topic-domain classification (annotation: wikidomain).
 # Unlike the foundry annotations this yields a single stand-off metadata XML per
