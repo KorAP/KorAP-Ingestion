@@ -60,6 +60,14 @@ You can extract the three-part sigle (e.g., `SK/UL/19811`) by overriding the `TE
 make TEI_FLAGS='--xmlid-to-textsigle '\''([A-Z]+)\.(.*)\.([0-9]+)\.*([0-9])@$$1/$$2/$$3$$4'\'''
 ```
 
+### Using Inline Annotations
+
+If your source XML files already contain tokenization, sentence boundaries, and inline annotations that you want to use directly, you can set the `USE_INLINE_ANNOTATIONS_AS` variable to the name of the inline tokens foundry (e.g., `gingko`). This will pass the `--no-tokenizer --inline-tokens <foundry-name>` flags to `tei2korapxml` instead of the default `-s -tk` (sentence splitting and tokenization) flags:
+
+```bash
+make USE_INLINE_ANNOTATIONS_AS=gingko
+```
+
 ### Configuring Active Annotators
 
 You can specify which annotation layers to run and package by setting the `ANNOTATIONS` variable. By default, it runs:

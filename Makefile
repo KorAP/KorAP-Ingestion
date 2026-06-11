@@ -13,6 +13,10 @@ TEI_ZIP_NAME ?= tei
 TEI_FLAGS ?= --auto-textsigle 'TEI/XYZ.00001' # --xmlid-to-textsigle '([A-Z]+)\.(.*)\.([0-9]+)\.*([0-9])@$$1/$$2/$$3$$4'
 export TEI_FLAGS
 
+# If set to a foundry name (e.g. gingko), tei2korapxml will use inline annotations and tokens from the source XML
+USE_INLINE_ANNOTATIONS_AS ?=
+TEI2KORAPXML_FLAGS ?= $(if $(USE_INLINE_ANNOTATIONS_AS),--no-tokenizer --inline-tokens $(USE_INLINE_ANNOTATIONS_AS),-s -tk)
+
 ifneq ($(TEI_FILES),)
 BASENAMES += $(TEI_ZIP_NAME)
 endif
@@ -50,13 +54,13 @@ check-src:
 
 $(BUILD_DIR)/%.zip: $(SRC_DIR)/%.i5.xml
 	mkdir -p $(BUILD_DIR)
-	docker run --rm -i $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) korap/tei2korapxml:latest -l warn -s -tk - < $< > $@ 2> >(tee $(@:.zip=.log) >&2)
-#	docker run --rm $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v $(abspath $<):/input.i5.xml:ro korap/tei2korapxml:latest --progress -l warn -s -tk /input.i5.xml > $@ 2> >(tee $(@:.zip=.log) >&2)
+	docker run --rm -i $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) korap/tei2korapxml:latest -l warn $(TEI2KORAPXML_FLAGS) - < $< > $@ 2> >(tee $(@:.zip=.log) >&2)
+#	docker run --rm $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v $(abspath $<):/input.i5.xml:ro korap/tei2korapxml:latest --progress -l warn $(TEI2KORAPXML_FLAGS) /input.i5.xml > $@ 2> >(tee $(@:.zip=.log) >&2)
 	printf "%s\t%s\n" "$$(grep -c '<idsText ' $<)" "$$(unzip -l $@ | grep data.xml | wc -l)"
 
 $(BUILD_DIR)/$(TEI_ZIP_NAME).zip: $(TEI_FILES)
 	mkdir -p $(BUILD_DIR)
-	docker run --rm --entrypoint /bin/sh $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v "$(abspath $(TEI_DIR)):/input:ro" korap/tei2korapxml:latest -c 'tei2korapxml -l warn -s -tk '"$$TEI_FLAGS"' /input/*.xml' > $@ 2> >(tee $(@:.zip=.log) >&2)
+	docker run --rm --entrypoint /bin/sh $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v "$(abspath $(TEI_DIR)):/input:ro" korap/tei2korapxml:latest -c 'tei2korapxml -l warn '$(TEI2KORAPXML_FLAGS)' '"$$TEI_FLAGS"' /input/*.xml' > $@ 2> >(tee $(@:.zip=.log) >&2)
 	printf "%s\t%s\n" "$$(cat $^ | grep -c '<teiHeader')" "$$(unzip -l $@ | grep data.xml | wc -l)"
 
 
