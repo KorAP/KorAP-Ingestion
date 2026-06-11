@@ -64,11 +64,11 @@ $(BUILD_DIR)/$(TEI_ZIP_NAME).zip: $(TEI_FILES)
 	printf "%s\t%s\n" "$$(cat $^ | grep -c '<teiHeader')" "$$(unzip -l $@ | grep data.xml | wc -l)"
 
 
-$(BUILD_DIR)/%.tree_tagger.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
+$(BUILD_DIR)/%.tree_tagger.zip: $(BUILD_DIR)/%.zip | bin/korapxmltool
 	$(KORAPXMLTOOL) -j 1 -T treetagger -t zip --force -D $(BUILD_DIR) $<
 #	 $(KORAPXMLTOOL) $< | pv | docker run --rm -i korap/conllu2treetagger -l german | conllu2korapxml > $@
 
-$(BUILD_DIR)/%.spacy.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
+$(BUILD_DIR)/%.spacy.zip: $(BUILD_DIR)/%.zip | bin/korapxmltool
 	$(KORAPXMLTOOL) -P spacy -t zip --force -D $(BUILD_DIR) $<
 
 lib/Krill-Indexer.jar:
@@ -109,19 +109,19 @@ $(KORAPXMLTOOL_MODELS_PATH)/de-pos-maxent.bin:
 	mkdir -p $(KORAPXMLTOOL_MODELS_PATH)
 	curl -sL -o $@ https://corpora.ids-mannheim.de/tools/$@
 
-$(BUILD_DIR)/%.marmot-malt.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de.marmot $(KORAPXMLTOOL_MODELS_PATH)/german.mco  bin/korapxmltool 
+$(BUILD_DIR)/%.marmot-malt.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de.marmot $(KORAPXMLTOOL_MODELS_PATH)/german.mco | bin/korapxmltool
 	$(KORAPXMLTOOL) -T marmot:models/de.marmot -P malt:models/german.mco -t zip --force -D $(BUILD_DIR) $<
 
-$(BUILD_DIR)/%.corenlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/german-fast.tagger $(KORAPXMLTOOL_MODELS_PATH)/germanSR.ser.gz bin/korapxmltool
+$(BUILD_DIR)/%.corenlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/german-fast.tagger $(KORAPXMLTOOL_MODELS_PATH)/germanSR.ser.gz | bin/korapxmltool
 	$(KORAPXMLTOOL) -T corenlp -P corenlp -t zip --force -D $(BUILD_DIR) $<
 
-$(BUILD_DIR)/%.opennlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de-pos-maxent.bin bin/korapxmltool 
+$(BUILD_DIR)/%.opennlp.zip: $(BUILD_DIR)/%.zip $(KORAPXMLTOOL_MODELS_PATH)/de-pos-maxent.bin | bin/korapxmltool
 	$(KORAPXMLTOOL) -T opennlp -t zip --force -D $(BUILD_DIR) $<
 
-$(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip bin/korapxmltool 
+$(BUILD_DIR)/%.cmc.zip: $(BUILD_DIR)/%.zip | bin/korapxmltool
 	$(KORAPXMLTOOL) -j 1 -A "docker run --rm -i korap/conllu-cmc -s" -l error -F cmc -t zip --force -D $(BUILD_DIR) $<
 
-$(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip bin/conllu-gender
+$(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip | bin/conllu-gender bin/korapxmltool
 	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l WARNING -F gender -t zip --force -D $(BUILD_DIR) $<
 
 # --- Stand-off metadata annotations -----------------------------------------
@@ -136,7 +136,7 @@ GPU_FLAG ?= $(shell if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev
 # Wikipedia top-level topic-domain classification (annotation: wikidomain).
 # Unlike the foundry annotations this yields a single stand-off metadata XML per
 # corpus, not a per-text zip. The model is baked into the image, so nothing to mount.
-$(BUILD_DIR)/%.wikidomain.meta.xml: $(BUILD_DIR)/%.zip bin/korapxmltool
+$(BUILD_DIR)/%.wikidomain.meta.xml: $(BUILD_DIR)/%.zip | bin/korapxmltool
 	set -o pipefail; $(KORAPXMLTOOL) -t now $< \
 	  | docker run --rm -i $(GPU_FLAG) $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) \
 	      $(WIKI_TAXONOMY_IMAGE) --topk 2 --threshold 0.4 > $@ 2> >(tee $(@:.xml=.log) >&2)
@@ -167,7 +167,7 @@ meta: check-src $(foreach base,$(BASENAMES),$(foreach ann,$(ACTIVE_META),$(BUILD
 
 # The base zip, every annotation zip, and every stand-off meta XML are folded into
 # one Krill tar. korapxmltool auto-detects the .meta.xml stand-off inputs.
-$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(foreach ann,$(ANNOTATIONS),$(call artifact,%,$(ann)))
+$(BUILD_DIR)/%.krill.tar: $(BUILD_DIR)/%.zip $(foreach ann,$(ANNOTATIONS),$(call artifact,%,$(ann))) | bin/korapxmltool
 	$(KORAPXMLTOOL) --non-word-tokens -f -t krill -D $(BUILD_DIR) $(basename $<)*.zip $(foreach ann,$(ACTIVE_META),$(BUILD_DIR)/$*.$(ann).meta.xml)
 
 krill: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar) 
