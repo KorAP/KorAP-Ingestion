@@ -9,9 +9,10 @@ BASENAMES := $(patsubst %.i5.xml,%,$(notdir $(I5_FILES)))
 # Standard TEI P5 support
 TEI_DIR ?= TEI
 TEI_FILES := $(wildcard $(TEI_DIR)/*.xml)
+# Same files as seen from inside the container (the dir is mounted at /input).
+TEI_INPUTS := $(patsubst $(TEI_DIR)/%,/input/%,$(TEI_FILES))
 TEI_ZIP_NAME ?= tei
 TEI_FLAGS ?= --auto-textsigle 'TEI/XYZ.00001' # --xmlid-to-textsigle '([A-Z]+)\.(.*)\.([0-9]+)\.*([0-9])@$$1/$$2/$$3$$4'
-export TEI_FLAGS
 
 # If set to a foundry name (e.g. gingko), tei2korapxml will use inline annotations and tokens from the source XML
 USE_INLINE_ANNOTATIONS_AS ?=
@@ -60,7 +61,7 @@ $(BUILD_DIR)/%.zip: $(SRC_DIR)/%.i5.xml
 
 $(BUILD_DIR)/$(TEI_ZIP_NAME).zip: $(TEI_FILES)
 	mkdir -p $(BUILD_DIR)
-	docker run --rm --entrypoint /bin/sh $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v "$(abspath $(TEI_DIR)):/input:ro" korap/tei2korapxml:latest -c 'tei2korapxml -l warn '$(TEI2KORAPXML_FLAGS)' '"$$TEI_FLAGS"' /input/*.xml' > $@ 2> >(tee $(@:.zip=.log) >&2)
+	docker run --rm $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) -v "$(abspath $(TEI_DIR)):/input:ro" korap/tei2korapxml:latest -l warn $(TEI2KORAPXML_FLAGS) $(TEI_FLAGS) $(TEI_INPUTS) > $@ 2> >(tee $(@:.zip=.log) >&2)
 	printf "%s\t%s\n" "$$(cat $^ | grep -c '<teiHeader')" "$$(unzip -l $@ | grep data.xml | wc -l)"
 
 
