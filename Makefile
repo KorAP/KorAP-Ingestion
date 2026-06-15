@@ -180,7 +180,7 @@ $(TARGET_DIR)/index: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar)
 	java -jar lib/Krill-Indexer.jar -c lib/krill.cfg --progress -i $(subst " ",;,$^) -o $@
 
 korap: check-src $(TARGET_DIR)/index
-	curl -s https://raw.githubusercontent.com/KorAP/KorAP-Docker/master/compose.yaml | sed 's/64543:64543/$(KORAP_PORT):64543/g' | COMPOSE_PROFILES='export,open' INDEX='$(TARGET_DIR)/index' docker compose -p korap -f - --profile=lite
+	curl -s https://raw.githubusercontent.com/KorAP/KorAP-Docker/master/compose.yaml | sed 's/64543:64543/$(KORAP_PORT):64543/g' | COMPOSE_PROFILES='export,open,lite' INDEX='$(TARGET_DIR)/index' docker compose -p korap -f - up
 
 $(TARGET_DIR)/index.tar.xz: $(TARGET_DIR)/index
 	tar -I 'xz -T0' -C $(dir $<) -cf $@ $(notdir $<)
