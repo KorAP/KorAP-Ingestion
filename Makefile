@@ -126,7 +126,7 @@ $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip | bin/conllu-gender bin/korapxmlto
 	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l WARNING -F gender -t zip --force -D $(BUILD_DIR) $<
 
 # --- Stand-off metadata annotations -----------------------------------------
-WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy
+WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy:0.3.0
 
 # Pass --gpus=all to GPU-capable docker runs when a CUDA GPU is usable, detected
 # by nvidia-smi succeeding on the host. (The nvidia runtime is not listed in
