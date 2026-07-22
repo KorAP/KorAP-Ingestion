@@ -126,7 +126,7 @@ $(BUILD_DIR)/%.gender.zip: $(BUILD_DIR)/%.zip | bin/conllu-gender bin/korapxmlto
 	$(KORAPXMLTOOL) -j 1 -A "bin/conllu-gender -s" -l WARNING -F gender -t zip --force -D $(BUILD_DIR) $<
 
 # --- Stand-off metadata annotations -----------------------------------------
-WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy:0.3.0
+WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy:1.1.1
 
 # Pass --gpus=all to GPU-capable docker runs when a CUDA GPU is usable, detected
 # by nvidia-smi succeeding on the host. (The nvidia runtime is not listed in
@@ -134,13 +134,24 @@ WIKI_TAXONOMY_IMAGE ?= korap/wiki-taxonomy:0.3.0
 # Probed once at parse time; override by setting GPU_FLAG (e.g. GPU_FLAG= to disable).
 GPU_FLAG ?= $(shell if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then echo --gpus=all; fi)
 
+# wiki-taxonomy >= 1.1.1 requires --model-type: the embeddings model only pays
+# off with fp16 acceleration, i.e. on GPUs with tensor cores. Mirror the tool's
+# own fp16 whitelist (FP16_FAST_GPUS in now_to_tei.py; a name list because e.g.
+# GTX 16xx reports compute capability 7.5 despite lacking tensor cores) against
+# the first GPU's name; unknown GPUs and CPU-only hosts get distilbert.
+WIKI_TAXONOMY_FP16_GPUS ?= H100|H200|A100|A30|A40|A10|A16|L4|L40S|L40|T4|V100|RTX
+WIKI_TAXONOMY_MODEL_TYPE ?= $(shell if command -v nvidia-smi >/dev/null 2>&1 \
+  && nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 \
+     | grep -qwE '$(WIKI_TAXONOMY_FP16_GPUS)'; \
+  then echo embeddings; else echo distilbert; fi)
+
 # Wikipedia top-level topic-domain classification (annotation: wikidomain).
 # Unlike the foundry annotations this yields a single stand-off metadata XML per
 # corpus, not a per-text zip. The model is baked into the image, so nothing to mount.
 $(BUILD_DIR)/%.wikidomain.meta.xml: $(BUILD_DIR)/%.zip | bin/korapxmltool
 	set -o pipefail; $(KORAPXMLTOOL) -t now $< \
 	  | docker run --rm -i $(GPU_FLAG) $(if $(DOCKER_CPU_SHARES),--cpu-shares $(DOCKER_CPU_SHARES)) \
-	      $(WIKI_TAXONOMY_IMAGE) --topk 2 --threshold 0.4 > $@ 2> >(tee $(@:.xml=.log) >&2)
+	      $(WIKI_TAXONOMY_IMAGE) --model-type $(WIKI_TAXONOMY_MODEL_TYPE) --topk 2 --threshold 0.4 > $@ 2> >(tee $(@:.xml=.log) >&2)
 
 # udpipe target removed as requested
 # %.ud.zip: %.zip
