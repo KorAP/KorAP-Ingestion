@@ -2,6 +2,14 @@ SHELL := /bin/bash
 SRC_DIR ?= I5
 KORAP_PORT ?= 64543
 
+# Optional: path to a Kalamar-Instance-* checkout (e.g. ../Kalamar-Instance-IDS)
+# whose customizations (config, custom templates, plugins) should be mounted
+# into the kalamar container. The instance ships its own compose.instance.yaml
+# describing what to mount where, so this project needs no knowledge of it.
+#   make korap KALAMAR_INSTANCE=../Kalamar-Instance-IDS
+KALAMAR_INSTANCE ?=
+KALAMAR_INSTANCE_DIR := $(abspath $(KALAMAR_INSTANCE))
+
 # Discover all *.i5.xml files in SRC_DIR, excluding inlined tagged copies (*-TAG.i5.xml)
 I5_FILES := $(filter-out %-TAG.i5.xml,$(wildcard $(SRC_DIR)/*.i5.xml))
 BASENAMES := $(patsubst %.i5.xml,%,$(notdir $(I5_FILES)))
@@ -191,7 +199,7 @@ $(TARGET_DIR)/index: $(foreach base,$(BASENAMES),$(BUILD_DIR)/$(base).krill.tar)
 	java -jar lib/Krill-Indexer.jar -c lib/krill.cfg --progress -i $(subst " ",;,$^) -o $@
 
 korap: check-src $(TARGET_DIR)/index
-	curl -s https://raw.githubusercontent.com/KorAP/KorAP-Docker/master/compose.yaml | sed 's/64543:64543/$(KORAP_PORT):64543/g' | COMPOSE_PROFILES='export,open,lite' INDEX='$(TARGET_DIR)/index' docker compose -p korap -f - up
+	curl -s https://raw.githubusercontent.com/KorAP/KorAP-Docker/master/compose.yaml | sed 's/64543:64543/$(KORAP_PORT):64543/g' | COMPOSE_PROFILES='export,open,lite' INDEX='$(TARGET_DIR)/index' $(if $(KALAMAR_INSTANCE),KALAMAR_INSTANCE_DIR='$(KALAMAR_INSTANCE_DIR)') docker compose -p korap -f - $(if $(KALAMAR_INSTANCE),-f '$(KALAMAR_INSTANCE_DIR)/compose.instance.yaml') up
 
 $(TARGET_DIR)/index.tar.xz: $(TARGET_DIR)/index
 	tar -I 'xz -T0' -C $(dir $<) -cf $@ $(notdir $<)

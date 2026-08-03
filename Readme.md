@@ -26,6 +26,22 @@ make KORAP_PORT=64544
 
 Then open the corresponding URL (e.g., http://localhost:64544) in your browser.
 
+### Testing a Kalamar instance's customizations
+
+By default the KorAP UI comes up as stock Kalamar. To test the config and
+templates of a separate `Kalamar-Instance-*` checkout (e.g. the IDS instance,
+with its custom corpus/doc pages, navigation and localization), point
+`KALAMAR_INSTANCE` at that checkout:
+
+```bash
+make korap KALAMAR_INSTANCE=../Kalamar-Instance-IDS
+```
+
+The instance ships a `compose.instance.yaml` describing which of its files are
+mounted where in the `kalamar` container, so this project needs no knowledge of
+any particular instance and the instance can be kept up to date independently
+(`git pull` in its checkout). Combine with `KORAP_PORT` as usual.
+
 ### Standard TEI P5 Support
 
 Standard TEI P5 files (which typically contain one text per file) can be batch-converted together. By default, place your `.xml` files in the `TEI` directory in the root of the project:
