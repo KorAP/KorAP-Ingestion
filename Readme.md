@@ -26,6 +26,30 @@ make KORAP_PORT=64544
 
 Then open the corresponding URL (e.g., http://localhost:64544) in your browser.
 
+### Describing your corpus in the user interface
+
+The KorAP UI has a *Corpus* entry in its documentation menu that shows a
+placeholder page until you describe the corpus you are serving. To fill it,
+put a `doc/corpus.html.ep` template into the `custom` directory:
+
+```bash
+mkdir -p custom/doc
+$EDITOR custom/doc/corpus.html.ep
+make korap
+```
+
+Such a template is mostly HTML, with `<%= ... %>` for embedded Perl; a file
+ending in `.html.md` is rendered as Markdown instead. KorAP-Docker's
+[custom/README.md](https://github.com/KorAP/KorAP-Docker/blob/master/custom/README.md)
+lists the templates you can provide -- including a references page stating how
+your corpus should be cited -- and ships commented examples.
+
+Use `KALAMAR_TEMPLATES` to keep those templates elsewhere:
+
+```bash
+make korap KALAMAR_TEMPLATES=my-corpus-docs
+```
+
 ### Testing a Kalamar instance's customizations
 
 By default the KorAP UI comes up as stock Kalamar. To test the config and

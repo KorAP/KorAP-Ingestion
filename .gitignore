@@ -33,3 +33,7 @@ TEI/
 
 # Log files
 *.log
+
+# Kalamar templates describing your corpus (created on demand by `make korap`,
+# see KALAMAR_TEMPLATES). Track them in your own repository if you like.
+/custom/
